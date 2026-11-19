@@ -5,6 +5,8 @@ import traceback  # 引入 traceback，用于服务端错误日志
 
 from fastapi import FastAPI, Request  # 引入 FastAPI 与请求对象
 from fastapi.responses import JSONResponse  # 引入 JSON 响应
+from fastapi.exceptions import RequestValidationError  # 捕获请求参数和JSON解析错误
+from starlette.exceptions import HTTPException  # 同时捕获路由层404、405等框架异常
 
 from .core.response import AppError, err  # 引入统一返回与业务异常
 from .db.models import init_db  # 引入建表函数
@@ -25,6 +27,29 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)  # 挂载 /api/auth
     # 注册审计路由
     app.include_router(audit.router)  # 挂载 /api/audit
+
+    @app.exception_handler(RequestValidationError)  # 参数错误也遵守统一响应契约
+    async def validation_error_handler(request: Request, exc: RequestValidationError):  # 不回显原始入参
+        """将请求校验失败转换为统一422响应。
+
+        入参：request为当前请求，exc为参数校验异常。
+        出参：JSONResponse，错误码REQ_001，HTTP状态422。
+        失败时的行为：不返回异常详情或请求体，避免错误类型的口令等敏感输入被回显。
+        """
+        # 校验异常的errors()可能包含input，不能把原始口令或患者输入直接返回客户端。
+        return JSONResponse(status_code=422, content=err("REQ_001", "请求参数缺失或格式错误"))  # 保留参数错误HTTP语义
+
+    @app.exception_handler(HTTPException)  # 使用Starlette基类覆盖框架与FastAPI异常
+    async def http_error_handler(request: Request, exc: HTTPException):  # 保留状态和协议响应头
+        """将HTTP异常转换为统一失败响应。
+
+        入参：request为当前请求，exc为HTTP异常。
+        出参：JSONResponse，保留原HTTP状态和响应头，错误码HTTP_状态码。
+        失败时的行为：未知状态使用通用提示，不直接公开任意异常detail。
+        """
+        messages = {400: "请求无法处理", 401: "请先登录", 403: "无权访问该资源", 404: "请求的资源不存在", 405: "请求方法不允许", 429: "请求过于频繁，请稍后重试"}  # 公开提示不包含内部详情
+        # Allow、WWW-Authenticate等响应头具有协议含义，统一JSON时必须保留。
+        return JSONResponse(status_code=exc.status_code, content=err(f"HTTP_{exc.status_code}", messages.get(exc.status_code, "请求无法处理")), headers=exc.headers)  # 复用现有err结构
 
     # 注册业务异常处理器：把 AppError 转成统一返回结构
     @app.exception_handler(AppError)  # 异常处理器注册
