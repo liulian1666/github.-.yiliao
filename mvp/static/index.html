@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>门诊知识助手 MVP</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@dev/lib/index.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="public-config.js"></script>
+</head>
+<body>
+  <!-- 登录视图 -->
+  <div id="loginView" class="login-wrap">
+    <div class="login-card">
+      <h1>门诊知识助手</h1>
+      <p class="sub">预约与分诊协作 · 知识库 / RAG / LLM / 知识图谱</p>
+      <div class="field"><label>用户名</label><input id="loginUser" placeholder="admin / user1 / user2 / user3"></div>
+      <div class="field"><label>密码</label><input id="loginPwd" type="password" placeholder="admin123 / 123456"></div>
+      <button id="loginBtn" class="btn primary block">登 录</button>
+      <div id="loginMsg" class="msg err"></div>
+      <div class="hint">
+        演示账号：SaaS管理员 admin/admin123 · 分层用户 user1(层级1)/user2(层级2)/user3(层级3)，密码均为 123456。
+        不同层级能看到的知识与功能不同，登录后对比体验。
+      </div>
+    </div>
+  </div>
+
+  <!-- 主应用视图 -->
+  <div id="appView" class="app hidden">
+    <header class="topbar">
+      <div class="brand">门诊知识助手 <span class="tag">MVP</span></div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="chat">智能问答</button>
+        <button class="tab" data-tab="kb">知识库</button>
+        <button class="tab" data-tab="wiki">Wiki 图谱</button>
+        <button class="tab admin-only hidden" data-tab="admin">管理后台</button>
+      </nav>
+      <div class="userbox">
+        <span id="userLabel"></span>
+        <button id="logoutBtn" class="btn ghost sm">退出</button>
+      </div>
+    </header>
+
+    <!-- 问答页 -->
+    <main id="tab-chat" class="page">
+      <div class="chat-panel">
+        <div id="chatList" class="chat-list">
+          <div class="bubble bot">你好！我是门诊知识助手。可以问我：三套等待时间口径是什么？迟到患者怎么排？急症转人工的红线是什么？……回答基于知识库检索（RAG）+ 大模型生成，并列出引用来源。</div>
+        </div>
+        <div id="sourceBox" class="source-box hidden"></div>
+        <div class="chat-input">
+          <input id="chatInput" placeholder="输入你的问题，回车发送">
+          <button id="chatSend" class="btn primary">发送</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- 知识库页 -->
+    <main id="tab-kb" class="page hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>知识库条目</h2><span class="note">仅显示你所在层级可见的内容</span></div>
+        <div id="kbList" class="kb-list"></div>
+      </div>
+    </main>
+
+    <!-- Wiki 图谱页 -->
+    <main id="tab-wiki" class="page hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>Wiki 知识图谱</h2><span class="note">大节点为分类，拖动/滚轮可缩放</span></div>
+        <div id="wikiChart" class="wiki-chart"></div>
+        <div id="wikiLegend" class="legend"></div>
+      </div>
+    </main>
+
+    <!-- 管理后台页 -->
+    <main id="tab-admin" class="page hidden">
+      <div class="admin-grid">
+        <div class="panel">
+          <div class="panel-head"><h2>用户管理</h2></div>
+          <div id="userTable" class="table-wrap"></div>
+          <div class="form-row">
+            <input id="nuUser" placeholder="用户名">
+            <input id="nuPwd" placeholder="密码(≥6位)" type="password">
+            <select id="nuRole"><option value="user">用户</option><option value="admin">管理员</option></select>
+            <select id="nuTier"><option value="1">层级1</option><option value="2">层级2</option><option value="3">层级3</option></select>
+            <button id="nuCreate" class="btn primary sm">新建用户</button>
+          </div>
+          <div id="adminMsg" class="msg"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>知识库管理</h2></div>
+          <div id="kbAdminTable" class="table-wrap"></div>
+          <div class="form-col">
+            <input id="nkTitle" placeholder="新条目标题">
+            <textarea id="nkContent" placeholder="新条目内容" rows="3"></textarea>
+            <div class="form-row">
+              <input id="nkCat" placeholder="分类，如：队列规则">
+              <select id="nkTier"><option value="1">层级1可见</option><option value="2">层级2可见</option><option value="3">层级3可见</option></select>
+              <button id="nkCreate" class="btn primary sm">新增条目</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>问答留痕（审计）</h2></div>
+          <div id="logTable" class="table-wrap"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
